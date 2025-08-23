@@ -46,9 +46,6 @@ htmlcov/
 *.log
 *.sqlite3
 *.db
-rejection_log.csv
-resubmission_candidates.json
-pipeline_metrics_summary_*.json
 
 # Secrets / environment
 .env

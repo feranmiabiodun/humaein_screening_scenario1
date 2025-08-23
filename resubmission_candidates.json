@@ -1,0 +1,42 @@
+[
+  {
+    "claim_id": "A123",
+    "patient_id": "P001",
+    "submitted_at": "2025-07-01T00:00:00",
+    "denial_reason": "Missing modifier",
+    "_denial_classification": "known_retryable",
+    "_denial_confidence": 0.99,
+    "source_system": "alpha",
+    "recommended_changes": "Add missing modifier and resubmit"
+  },
+  {
+    "claim_id": "A124",
+    "patient_id": "P002",
+    "submitted_at": "2025-07-10T00:00:00",
+    "denial_reason": "Incorrect NPI",
+    "_denial_classification": "known_retryable",
+    "_denial_confidence": 0.99,
+    "source_system": "alpha",
+    "recommended_changes": "Review NPI number and resubmit"
+  },
+  {
+    "claim_id": "A127",
+    "patient_id": "P004",
+    "submitted_at": "2025-07-20T00:00:00",
+    "denial_reason": "Prior auth required",
+    "_denial_classification": "known_retryable",
+    "_denial_confidence": 0.99,
+    "source_system": "alpha",
+    "recommended_changes": "Obtain prior authorization and resubmit"
+  },
+  {
+    "claim_id": "B988",
+    "patient_id": "P011",
+    "submitted_at": "2025-07-09T00:00:00",
+    "denial_reason": "Missing modifier",
+    "_denial_classification": "known_retryable",
+    "_denial_confidence": 0.99,
+    "source_system": "beta",
+    "recommended_changes": "Add missing modifier and resubmit"
+  }
+]

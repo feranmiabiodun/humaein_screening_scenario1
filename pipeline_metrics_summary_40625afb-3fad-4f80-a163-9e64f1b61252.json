@@ -1,0 +1,27 @@
+{
+  "run_id": "40625afb-3fad-4f80-a163-9e64f1b61252",
+  "timestamp_utc": "2025-08-23T10:36:59.328357Z",
+  "total_claims": 9,
+  "total_denied": 7,
+  "total_flagged_for_resubmission": 4,
+  "total_excluded_denied": 3,
+  "counts_by_source": {
+    "alpha": 5,
+    "beta": 4
+  },
+  "flagged_by_source": {
+    "alpha": 3,
+    "beta": 1
+  },
+  "excluded_reasons": {
+    "non_retryable": 2,
+    "not_denied": 2,
+    "missing_patient_id": 1
+  },
+  "denial_classification_counts": {
+    "known_retryable": 4,
+    "known_non_retryable": 2,
+    "missing": 2,
+    "ambiguous": 1
+  }
+}
