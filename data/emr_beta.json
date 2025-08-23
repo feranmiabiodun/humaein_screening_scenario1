@@ -1,0 +1,34 @@
+[ 
+  { 
+    "id": "B987", 
+    "member": "P010", 
+    "code": "99213",  
+    "error_msg": "Incorrect provider type",  
+    "date": "2025-07-03T00:00:00",  
+    "status": "denied"  
+  }, 
+  { 
+    "id": "B988", 
+    "member": "P011", 
+    "code": "99214",  
+    "error_msg": "Missing modifier",  
+    "date": "2025-07-09T00:00:00",  
+    "status": "denied"  
+  }, 
+  { 
+    "id": "B989", 
+    "member": "P012", 
+    "code": "99215",  
+    "error_msg": null, 
+    "date": "2025-07-10T00:00:00",  
+    "status": "approved"  
+  }, 
+  { 
+    "id": "B990", 
+    "member": null, 
+    "code": "99401",  
+    "error_msg": "incorrect procedure",  
+    "date": "2025-07-01T00:00:00",  
+    "status": "denied"  
+  } 
+]

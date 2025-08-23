@@ -1,0 +1,61 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / build
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Packaging
+*.egg
+*.whl
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.coverage
+htmlcov/
+.coverage.*
+.pytest_cache/
+
+# Type checking / caches
+.mypy_cache/
+.pyre/
+
+# Logs, local DBs, runtime files, and outputs
+*.log
+*.sqlite3
+*.db
+rejection_log.csv
+resubmission_candidates.json
+pipeline_metrics_summary_*.json
+
+# Secrets / environment
+.env
+.env.* 
+*.pem
+*.key
+
+# Misc
+*.bak
+*.swp
