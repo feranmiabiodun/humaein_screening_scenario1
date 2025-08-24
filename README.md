@@ -169,13 +169,12 @@ Other tunables: `KNOWN_RETRYABLE`, `KNOWN_NON_RETRYABLE`, `RETRY_KEYWORDS`, `NON
 
 * If FastAPI raises `Form data requires "python-multipart"`, install it: `pip install python-multipart`.
 * To force writing outputs into the folder where you run the command use `--out-dir .` (or pass an absolute path).
-* Because your repo is in OneDrive, consider using a non-synced folder for heavy runs to avoid sync/lock issues.
 * Logging: `pipeline.py` configures `logging.basicConfig(level=logging.INFO)`. If you don’t see INFO logs, another component may have configured logging differently.
-* The LLM used here is a **deterministic mock** (`mocked_llm_infer`) for reproducibility. If you swap in a real LLM, remember to handle credentials, rate limits, and privacy.
+* The LLM used here is a **deterministic mock** (`mocked_llm_infer`) for reproducibility. 
 
 ---
 
-## Testing & grading suggestions
+## Testing & grading 
 
 * Open the notebook and run the demonstration cells — these are the canonical examples for graders.
 * Run `pipeline.py` with `--out-dir .` and compare `resubmission_candidates` fields and `recommended_changes` to examples in the notebook.
