@@ -122,7 +122,7 @@ curl -X POST "http://127.0.0.1:8000/run-pipeline/" ^
 
 **API response** includes:
 
-* `run_id`, `total_claims`, `total_denied`, `total_flagged_for_resubmission`, `candidates_returned_inline`, `candidates_path` (if written), `metrics` (object), `rejection_log_path` (if written).
+* `run_id`, `total_claims`, `total_denied`, `total_flagged_for_resubmission`, `candidates_returned_inline`, `candidates_path`, `metrics` (object), `rejection_log_path`.
 
 Open `http://127.0.0.1:8000/docs` for the interactive OpenAPI UI.
 
