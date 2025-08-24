@@ -1,4 +1,4 @@
-# Resubmission Pipelin
+# Resubmission Pipeline
 
 ## Overview
 
