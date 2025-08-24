@@ -1,4 +1,4 @@
-# Resubmission Pipeline — README
+# Resubmission Pipelin
 
 ## Overview
 
