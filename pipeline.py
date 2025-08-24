@@ -1,6 +1,7 @@
 # pipeline.py
-# Pipeline module: ingestion (fuzzy mapping), normalization, classifier, eligibility, writers, and CLI runner.
-
+# Pipeline: ingestion (fuzzy mapping), normalization, classifier, eligibility,
+# atomic writers, plus helpers: recommend_from_reason, write_resubmission_candidates,
+# compute_and_write_metrics.
 from __future__ import annotations
 import sys
 import os
@@ -17,6 +18,8 @@ from typing import Optional, Dict, Any, Callable, Iterable
 import difflib
 import pandas as pd
 import numpy as np
+
+import argparse
 
 # -----------------------
 # Module-level defaults
@@ -323,27 +326,34 @@ def classify_with_strategy(
         return {"label": llm_label or "ambiguous", "confidence": llm_conf, "source": "llm_low_conf"}
 
 # -----------------------
-# Atomic rejection log writer
+# Atomic rejection log writer (fixed append behavior)
 # -----------------------
 def _atomic_write_rejection_log(rejects: pd.DataFrame, target_path: str) -> None:
-    """Write rejection rows to CSV atomically (create or append)."""
+    """Write rejection rows to CSV atomically (create or append) WITHOUT duplicating headers."""
     target = Path(target_path)
     if len(rejects) == 0:
         logger.info("No rejected rows to write to %s", target_path)
         return
     target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, newline="", suffix=".csv") as tmp:
+    # write temp CSV first (contains header)
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, newline="", suffix=".csv", encoding="utf-8") as tmp:
         tmp_path = Path(tmp.name)
         rejects.to_csv(tmp_path, index=False)
     try:
         if not target.exists():
+            # atomic replace for first-time write
             os.replace(tmp_path, target)
             logger.info("Wrote %d rejected rows to %s (created)", len(rejects), target_path)
         else:
-            with open(target, "ab") as f_target, open(tmp_path, "rb") as f_tmp:
-                shutil.copyfileobj(f_tmp, f_target)
+            # append without header to avoid duplicate headers
+            # use pandas append mode (not atomic) as it's simpler and avoids header duplication
+            rejects.to_csv(target, mode="a", header=False, index=False)
             logger.info("Appended %d rejected rows to %s", len(rejects), target_path)
-            tmp_path.unlink(missing_ok=True)
+            # cleanup tmp
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
     except Exception:
         logger.exception("Failed to write rejection log atomically; attempting fallback append.")
         try:
@@ -418,23 +428,35 @@ def compute_resubmission_eligibility(
 
     # human-readable reason with precedence
     reason = pd.Series("ambiguous_classification", index=df.index)
-    reason.loc[~is_denied] = "not_denied"
+
+    # normalized status to detect previously approved rows
+    status_lower = df["status"].astype(str).str.strip().str.lower()
+
+    # mark rows that are NOT denied:
+    # - if they were previously approved, label "previously_approved"
+    reason.loc[~is_denied & (status_lower == "approved")] = "previously_approved"
+    reason.loc[~is_denied & (status_lower != "approved")] = "not_denied"
+
     pid_missing = ~df["_patient_present"]
     days_missing = df["_days_since_submitted"].isna()
     too_recent = df["_days_since_submitted"] <= 7
     is_allowed = df["_denial_classification"].isin(allowed_classes_for_resubmit)
     is_known_non_retry = df["_denial_classification"].isin(["known_non_retryable", "heuristic_non_retryable"])
     is_missing_denial = df["_denial_classification"] == "missing"
+
+    # for denied rows, preserve the existing precedence and labels
     reason.loc[is_denied & pid_missing] = "missing_patient_id"
     reason.loc[is_denied & days_missing] = "missing_submitted_at"
     reason.loc[is_denied & too_recent] = "too_recent"
     reason.loc[is_denied & is_allowed] = df.loc[is_denied & is_allowed, "_denial_classification"]
     reason.loc[is_denied & is_known_non_retry] = "non_retryable"
     reason.loc[is_denied & is_missing_denial] = "missing_denial_reason"
+
     df["reason"] = reason
 
-    # write rejection log (ambiguous + non-retryable) if requested
-    rejection_mask = df["_denial_classification"].isin(["ambiguous", "heuristic_non_retryable", "known_non_retryable"])
+
+    # write rejection log (ambiguous + non-retryable) but ONLY for denied claims
+    rejection_mask = ~df["resubmission_eligible"].astype(bool)
     rejects = df[rejection_mask]
     if write_rejection_log:
         try:
@@ -444,11 +466,10 @@ def compute_resubmission_eligibility(
 
     return df
 
-# -----------------------
-# Recommended changes helper
-# -----------------------
+# ----- Added helpers from second script -----
+
 def recommend_from_reason(reason_text: Optional[str], classification: Optional[str] = None) -> str:
-    """Return a short recommended action string for a denial reason/classification."""
+    # small deterministic recommender for human-readable suggested action
     if reason_text is None or (isinstance(reason_text, float) and pd.isna(reason_text)):
         if classification in ("known_retryable", "heuristic_retryable"):
             return "Review denial note, correct the issue, and resubmit"
@@ -470,11 +491,7 @@ def recommend_from_reason(reason_text: Optional[str], classification: Optional[s
         return "Review denial note, correct the issue, and resubmit"
     return "Manual review recommended"
 
-# -----------------------
-# Output helpers
-# -----------------------
 def write_resubmission_candidates(df: pd.DataFrame, out_path: str = "resubmission_candidates.json") -> str:
-    """Write eligible candidates to JSON atomically and return path."""
     candidates = df[df["resubmission_eligible"].astype(bool)].copy()
     out_list = []
     seen = set()
@@ -484,16 +501,6 @@ def write_resubmission_candidates(df: pd.DataFrame, out_path: str = "resubmissio
             continue
         if cid:
             seen.add(cid)
-
-        # ensure source_system short token (if someone provided full value, keep last token)
-        src_val = row.get("source_system")
-        if pd.isna(src_val) or str(src_val).strip() == "":
-            src_out = "unknown"
-        else:
-            src_out = str(src_val).split("_")[-1]
-
-        recommended = recommend_from_reason(row.get("denial_reason"), row.get("_denial_classification"))
-
         out_item = {
             "claim_id": cid if cid else None,
             "patient_id": None if pd.isna(row.get("patient_id")) else row.get("patient_id"),
@@ -501,11 +508,10 @@ def write_resubmission_candidates(df: pd.DataFrame, out_path: str = "resubmissio
             "denial_reason": None if pd.isna(row.get("denial_reason")) else row.get("denial_reason"),
             "_denial_classification": row.get("_denial_classification"),
             "_denial_confidence": float(row.get("_denial_confidence")) if pd.notna(row.get("_denial_confidence")) else None,
-            "source_system": src_out,
-            "recommended_changes": recommended
+            "source_system": row.get("source_system") if pd.notna(row.get("source_system")) else "unknown",
+            "recommended_changes": recommend_from_reason(row.get("denial_reason"), row.get("_denial_classification"))
         }
         out_list.append(out_item)
-
     tmp = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json", encoding="utf-8") as fh:
@@ -513,15 +519,14 @@ def write_resubmission_candidates(df: pd.DataFrame, out_path: str = "resubmissio
             json.dump(out_list, fh, indent=2, ensure_ascii=False)
         os.replace(tmp, out_path)
         logger.info("Wrote %d candidates to %s", len(out_list), out_path)
-    except Exception:
+    except Exception as e:
         if tmp and os.path.exists(tmp):
             os.remove(tmp)
-        logger.exception("Failed to write candidates JSON")
+        logger.exception("Failed to write candidates JSON: %s", e)
         raise
     return out_path
 
 def compute_and_write_metrics(df: pd.DataFrame, out_dir: str = ".", write_json: bool = True) -> Dict[str, Any]:
-    """Compute metrics and write them atomically; return metrics dict."""
     run_id = str(uuid.uuid4())
     total_claims = int(len(df))
     total_denied = int(df['status'].astype(str).str.lower().eq('denied').sum())
@@ -553,81 +558,60 @@ def compute_and_write_metrics(df: pd.DataFrame, out_dir: str = ".", write_json: 
                 json.dump(metrics, fh, indent=2)
             os.replace(tmp, fname)
             logger.info("Wrote metrics JSON: %s flagged=%d", fname, total_flagged)
-        except Exception:
+        except Exception as e:
             if tmp and os.path.exists(tmp):
                 os.remove(tmp)
-            logger.exception("Failed to write metrics JSON")
+            logger.exception("Failed to write metrics JSON: %s", e)
             raise
     logger.info("metrics: run_id=%s total=%d denied=%d flagged=%d excluded_denied=%d by_source=%s",
                 metrics["run_id"], total_claims, total_denied, total_flagged, total_excluded, counts_by_source)
     return metrics
 
-# -----------------------
-# CLI runner when executed directly (MULTI-FILE)
-# -----------------------
 if __name__ == "__main__":
-    import argparse
-    import sys
 
-    # CLI: multiple input files, optional per-file sources, and ability to disable rejection log
-    parser = argparse.ArgumentParser(prog="pipeline.py", description="Run pipeline on one or more input files.")
-    parser.add_argument("inputs", nargs="+", help="Input file paths (CSV or JSON).")
-    parser.add_argument(
-        "--sources",
-        nargs="*",
-        help="Optional source_systems corresponding to inputs. Provide one per input or a single source to apply to all."
-    )
-    # default: write rejection_log; use this flag to disable writing
-    parser.add_argument("--no-write-rejection-log", action="store_true",
-                        help="Do NOT write rejection_log.csv (default: write rejection log).")
+    parser = argparse.ArgumentParser(description="Run pipeline (ingest -> normalize -> compute -> write).")
+    parser.add_argument("inputs", nargs="+", help="Input files (csv/json).")
+    parser.add_argument("--sources", nargs="*", help="Optional list of source tokens.")
+    parser.add_argument("--user-mapping-json", help="JSON string mapping canonical_field -> source_column")
+    parser.add_argument("--reference-date", default=None, help="Reference date (YYYY-MM-DD)")
+    parser.add_argument("--out-dir", default=None, help="Directory to write outputs. Default = current working directory.")
     args = parser.parse_args()
 
-    input_paths = [Path(p) for p in args.inputs]
-    if any(not p.exists() for p in input_paths):
-        missing = [str(p) for p in input_paths if not p.exists()]
-        logger.error("Input file(s) not found: %s", missing)
-        sys.exit(2)
+    run_id = uuid.uuid4().hex
 
-    # determine per-file source_system values
-    sources = args.sources or []
-    if len(sources) == 0:
-        sources = [p.stem for p in input_paths]
-    elif len(sources) == 1 and len(input_paths) > 1:
-        sources = [sources[0]] * len(input_paths)
-    elif len(sources) != len(input_paths):
-        logger.error("--sources must be absent, length 1, or length equal to number of inputs")
-        sys.exit(2)
-
-    try:
-        # ingest files with fuzzy mapping -> unified DF
-        df_unified = ingest_and_unify([str(p) for p in input_paths], sources=sources)
-
-        # normalization (single canonical step)
-        df_norm = normalize_df(df_unified)
-
-        # compute eligibility and write rejection log by default (unless disabled)
-        write_rejection = not args.no_write_rejection_log
-        enriched = compute_resubmission_eligibility(
-            df_norm,
-            reference_date=REFERENCE_DATE,
-            write_rejection_log=write_rejection,
-            rejection_log_path=REJECTION_LOG_PATH
-        )
-
-        # write candidates and metrics
-        candidates_path = write_resubmission_candidates(enriched, out_path="resubmission_candidates.json")
-        metrics = compute_and_write_metrics(enriched, out_dir=".", write_json=True)
-
-    except Exception as e:
-        logger.exception("Pipeline run failed: %s", e)
-        sys.exit(1)
-
-    # summary for CLI user
-    print(f"Processed {len(input_paths)} input file(s) -> rows: {len(df_unified)}")
-    print(f"Candidates written to: {candidates_path}")
-    print(f"Metrics run_id: {metrics['run_id']}  |  total_claims: {metrics['total_claims']}  flagged: {metrics['total_flagged_for_resubmission']}")
-    if write_rejection:
-        print(f"Rejection log (ambiguous/non-retryable) appended/written to: {REJECTION_LOG_PATH}")
+    # Use explicit out-dir if passed, otherwise use current working directory
+    if args.out_dir:
+        out_dir = Path(args.out_dir).expanduser().resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
     else:
-        print("Rejection log not written (disabled via --no-write-rejection-log).")
-    print("To inspect outputs: open resubmission_candidates.json and pipeline_metrics_summary_<run_id>.json")
+        out_dir = Path.cwd()
+
+    # optional user mapping
+    user_map = None
+    if args.user_mapping_json:
+        user_map = json.loads(args.user_mapping_json)
+
+    # pipeline flow (calls existing functions from this module)
+    df = ingest_and_unify(args.inputs, sources=args.sources, user_mapping=user_map)
+    df = normalize_df(df)
+
+    rejection_log_path = str(out_dir / f"rejection_{run_id}.csv")
+    enriched = compute_resubmission_eligibility(
+        df,
+        reference_date=args.reference_date,
+        write_rejection_log=True,
+        rejection_log_path=rejection_log_path
+    )
+
+    candidates_path = str(out_dir / f"resubmission_candidates_{run_id}.json")
+    write_resubmission_candidates(enriched, out_path=candidates_path)
+
+    metrics = compute_and_write_metrics(enriched, out_dir=str(out_dir), write_json=True)
+
+    # summary
+    print("Pipeline run complete.")
+    print("run_id:", run_id)
+    print("out_dir:", out_dir)
+    print("candidates_path:", candidates_path)
+    print("metrics_run_id:", metrics.get("run_id"))
+    print("rejection_log_path:", rejection_log_path)

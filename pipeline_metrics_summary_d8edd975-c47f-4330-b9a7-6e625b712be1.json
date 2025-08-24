@@ -1,6 +1,6 @@
 {
-  "run_id": "40625afb-3fad-4f80-a163-9e64f1b61252",
-  "timestamp_utc": "2025-08-23T10:36:59.328357Z",
+  "run_id": "d8edd975-c47f-4330-b9a7-6e625b712be1",
+  "timestamp_utc": "2025-08-24T15:09:55.228116Z",
   "total_claims": 9,
   "total_denied": 7,
   "total_flagged_for_resubmission": 4,
@@ -15,7 +15,7 @@
   },
   "excluded_reasons": {
     "non_retryable": 2,
-    "not_denied": 2,
+    "previously_approved": 2,
     "missing_patient_id": 1
   },
   "denial_classification_counts": {
