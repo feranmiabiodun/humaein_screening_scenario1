@@ -22,9 +22,6 @@ This repository contains a resubmission-classification pipeline and a small Fast
   * `pipeline_metrics_summary_<uuid>.json`
   * `rejection_<runid>.csv`
 * `.gitignore`, `requirements` — dependency list, etc.
-
-> Note: exact file names may differ slightly. Use the notebook to confirm names if needed.
-
 ---
 
 ## High-level architecture & flow
