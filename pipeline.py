@@ -24,14 +24,23 @@ import argparse
 # -----------------------
 # Module-level defaults
 # -----------------------
-logging.basicConfig(level=logging.INFO)                    # simple logger config
-logger = logging.getLogger("resubmission_pipeline")        # module logger
+logging.basicConfig(level=logging.INFO)                   
+logger = logging.getLogger("resubmission_pipeline")       
 
-USE_HYBRID = True                                          # heuristics + LLM hybrid
-LLM_CONF_THRESHOLD = 0.80                                  # LLM confidence cutoff
-FALLBACK_TO_HEURISTICS_IF_LOW_CONF = True                  # fallback behavior
-REFERENCE_DATE = pd.to_datetime("2025-07-30")              # default reference date
-REJECTION_LOG_PATH = "rejection_log.csv"                   # rejection log path
+# heuristics + LLM hybrid
+USE_HYBRID = True                                          
+
+# LLM confidence cutoff
+LLM_CONF_THRESHOLD = 0.80                                  
+
+# fallback behavior
+FALLBACK_TO_HEURISTICS_IF_LOW_CONF = True                  
+
+# default reference date
+REFERENCE_DATE = pd.to_datetime("2025-07-30")              
+
+# rejection log path
+REJECTION_LOG_PATH = "rejection_log.csv"                   
 
 # -----------------------
 # Ingestion / mapping helpers
