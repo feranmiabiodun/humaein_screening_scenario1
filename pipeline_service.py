@@ -9,7 +9,7 @@ from uuid import uuid4
 import shutil
 import traceback
 
-# import the merged pipeline functions (adjust module name if different)
+# import the pipeline functions
 from pipeline import (
     ingest_and_unify,
     normalize_df,
@@ -21,7 +21,7 @@ from pipeline import (
 
 app = FastAPI(title="Resubmission Pipeline API")
 
-# safety / operational limits (tune as needed)
+# safety / operational best-effort
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB per file
 MAX_FILES = 10                       # max number of files per request
 MAX_RETURN_CANDIDATES = 1000         # limit how many candidate records returned inline by default
@@ -32,7 +32,7 @@ def _cleanup_dir(path: str) -> None:
         if os.path.exists(path):
             shutil.rmtree(path)
     except Exception:
-        # swallow errors; cleanup is best-effort
+        # swallow errcandidate
         pass
 
 
@@ -51,7 +51,7 @@ async def run_pipeline(
 ):
     """
     Upload one or more CSV/JSON files and run the merged pipeline on them.
-    Returns a compact summary and (optionally) candidate records.
+    Returns a compact summary and candidate records.
     """
 
     if len(files) > MAX_FILES:
@@ -72,7 +72,7 @@ async def run_pipeline(
             path.write_bytes(contents)
             saved_paths.append(str(path))
 
-        # 2) parse optional sources param (supports single token or JSON list)
+        # 2) parse sources param (supports single token or JSON list)
         sources_list = None
         if sources:
             try:
@@ -85,7 +85,7 @@ async def run_pipeline(
                 # fallback: treat as single token string
                 sources_list = [sources]
 
-        # 3) parse optional user_mapping JSON (canonical_field -> source_column)
+        # 3) parse user_mapping JSON (canonical_field -> source_column)
         user_map = None
         if user_mapping_json:
             try:
@@ -123,7 +123,7 @@ async def run_pipeline(
             # compute_and_write_metrics generates a file in out_dir and returns metrics dict
             metrics = compute_and_write_metrics(enriched, out_dir=str(tmp_dir), write_json=True)
 
-        # 8) prepare compact candidates payload (limit returned records to avoid huge responses)
+        # 8) prepare compact candidates payload
         candidates_df = enriched[enriched["resubmission_eligible"].astype(bool)].copy()
         total_candidates = len(candidates_df)
         limit = return_candidate_limit if (return_candidate_limit is not None) else MAX_RETURN_CANDIDATES
