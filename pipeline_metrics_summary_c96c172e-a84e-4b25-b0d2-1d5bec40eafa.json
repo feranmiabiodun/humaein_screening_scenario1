@@ -1,6 +1,6 @@
 {
-  "run_id": "d8edd975-c47f-4330-b9a7-6e625b712be1",
-  "timestamp_utc": "2025-08-24T15:09:55.228116Z",
+  "run_id": "c96c172e-a84e-4b25-b0d2-1d5bec40eafa",
+  "timestamp_utc": "2025-08-26T15:10:31.681737Z",
   "total_claims": 9,
   "total_denied": 7,
   "total_flagged_for_resubmission": 4,
@@ -14,14 +14,17 @@
     "beta": 1
   },
   "excluded_reasons": {
-    "non_retryable": 2,
+    "missing_patient_id": 2,
     "previously_approved": 2,
-    "missing_patient_id": 1
+    "Incorrect provider type": 1
   },
   "denial_classification_counts": {
+    "Not Retryable": 5,
+    "Retryable": 4
+  },
+  "denial_label_counts": {
     "known_retryable": 4,
-    "known_non_retryable": 2,
-    "missing": 2,
+    "known_non_retryable": 4,
     "ambiguous": 1
   }
 }

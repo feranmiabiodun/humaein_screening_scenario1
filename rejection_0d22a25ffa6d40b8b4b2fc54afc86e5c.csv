@@ -1,6 +1,0 @@
-claim_id,patient_id,procedure_code,denial_reason,status,submitted_at,source_system,_denial_classification,_denial_confidence,_denial_inference_source,_days_since_submitted,_patient_present,resubmission_eligible,reason
-A125,Unknown,99215,Authorization expired,denied,2025-07-05,alpha,known_non_retryable,0.99,heuristic,25,False,False,non_retryable
-A126,P003,99381,,approved,2025-07-15,alpha,missing,1.0,heuristic,15,True,False,previously_approved
-B987,P010,99213,Incorrect provider type,denied,2025-07-03,beta,known_non_retryable,0.99,heuristic,27,True,False,non_retryable
-B989,P012,99215,,approved,2025-07-10,beta,missing,1.0,heuristic,20,True,False,previously_approved
-B990,Unknown,99401,incorrect procedure,denied,2025-07-01,beta,ambiguous,0.6,llm_low_conf,29,False,False,missing_patient_id

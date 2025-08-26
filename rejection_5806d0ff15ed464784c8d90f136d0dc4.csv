@@ -1,0 +1,4 @@
+claim_id,patient_id,procedure_code,denial_reason,status,submitted_at,source_system,_denial_confidence,_denial_inference_source,_denial_label,_denial_classification,_days_since_submitted,_patient_present,resubmission_eligible,decision_justification
+A125,Unknown,99215,Authorization expired,denied,2025-07-05,alpha,0.99,heuristic,known_non_retryable,Not Retryable,25,False,False,missing_patient_id
+B987,P010,99213,Incorrect provider type,denied,2025-07-03,beta,0.99,heuristic,known_non_retryable,Not Retryable,27,True,False,Incorrect provider type
+B990,Unknown,99401,incorrect procedure,denied,2025-07-01,beta,0.6,llm_low_conf,ambiguous,Not Retryable,29,False,False,missing_patient_id
